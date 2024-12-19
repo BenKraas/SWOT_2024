@@ -1,3 +1,9 @@
+# Special gitignore file for this project:
+data/
+
+# ----
+# Default gitignore file for Python projects:
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
