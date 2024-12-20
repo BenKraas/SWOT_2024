@@ -1,5 +1,6 @@
 # Special gitignore file for this project:
 data/
+token.txt
 
 # ----
 # Default gitignore file for Python projects:
