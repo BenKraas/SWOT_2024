@@ -1,0 +1,15 @@
+name: SWOT_2024_ANC2
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - geopandas
+  - matplotlib
+  - numpy
+  - pandas
+  - contextily
+  - netcdf4
+  - xarray
+  - earthaccess
+  - ipykernel
+  - jupyter
