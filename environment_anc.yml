@@ -9,6 +9,7 @@ dependencies:
   - pandas
   - contextily
   - netcdf4
+  - h5py
   - xarray
   - earthaccess
   - ipykernel
