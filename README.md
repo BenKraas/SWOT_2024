@@ -9,3 +9,8 @@ Install with `conda env create -f environment.yml`
 
 # Goal
 The goal of this project is to create a custom workflow for SWOT analysis. 
+
+
+# Interesting events:
+Damm breakage (date pending)
+Volumenberechnung?
