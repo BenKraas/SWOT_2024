@@ -2,6 +2,7 @@
 data/
 token.txt
 config.json
+output/
 
 # ----
 # Default gitignore file for Python projects:
