@@ -1,0 +1,6 @@
+name: SWOT_2024
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - netcdf4=1.7.2

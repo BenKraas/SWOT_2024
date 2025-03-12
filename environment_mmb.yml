@@ -1,0 +1,19 @@
+name: MMB_SWOT_2024
+channels:
+  - conda-forge
+dependencies:
+  - contextily
+  - dask
+  - earthaccess
+  - geopandas
+  - h5py
+  - ipykernel
+  - jupyter
+  - matplotlib
+  - netcdf4
+  - numpy
+  - pandas
+  - pyarrow
+  - xarray
+
+prefix: "/home/ben/.local/share/mamba/envs/MMB_SWOT_2024"
