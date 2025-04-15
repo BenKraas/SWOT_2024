@@ -2,6 +2,7 @@
 data/
 token.txt
 output/
+logs/
 
 # ----
 # Default gitignore file for Python projects:
