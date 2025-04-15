@@ -268,3 +268,6 @@
   geolocation_qual:
     type: float64
     description: 'Quality flag for the geolocation quantities in the pixel cloud data'
+  pixc_line_qual:
+    type: float64
+    description: 'Quality flag for pixel cloud data per rare-posted interferogram line (similar to slc_qual in the L1B_HR_SLC product)'
