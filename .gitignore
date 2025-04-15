@@ -2,7 +2,9 @@
 data/
 token.txt
 output/
-logs/
+
+.vscode/
+.../
 
 # ----
 # Default gitignore file for Python projects:
