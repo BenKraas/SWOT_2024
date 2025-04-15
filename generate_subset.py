@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import netCDF4 as nc
+import h5py
 import xarray as xr
+import re
 
 from tqdm import tqdm
 from shapely.geometry import Point
@@ -22,7 +24,10 @@ def load_dataset_description(yaml_file):
     return description
 
 def check_variable_type(var_data, expected_type):
-    """Check if variable data matches the expected type."""
+    """
+    Check if variable data matches the expected type.
+    Supported types: 'int', 'float', 'string', 'float64', 'float32', 'datetime64[ns]'.
+    """
     if expected_type == 'int':
         return np.issubdtype(var_data.dtype, np.integer)
     elif expected_type == 'float':
@@ -35,8 +40,10 @@ def check_variable_type(var_data, expected_type):
         return var_data.dtype == np.float32
     elif expected_type == 'datetime64[ns]':
         return np.issubdtype(var_data.dtype, np.datetime64)
+    elif expected_type == 'np.ndarray':
+        return isinstance(var_data, np.ndarray)
     else:
-        logger.warning(f"Unknown type check for {expected_type}")
+        logger.warning(f"Unknown type check for {expected_type}. Check supported types in check_variable_type() function.")
         return True
 
 def filter_by_constraints(data, var_name, constraints):
@@ -136,10 +143,17 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
     
     try:
         # Open the netCDF file with xarray
-        with xr.open_dataset(file_path, group='pixel_cloud') as pixel_cloud_group:
+        with h5py.File(file_path, 'r') as xr_dataset:
+            # get all attribute values as a dictionary
+            dataset_info = dict(xr_dataset.attrs)
 
+            # get the pixel cloud group
+            pixel_cloud_group = xr.open_dataset(file_path, group='pixel_cloud')
+            # unload the dataset
+            del xr_dataset
+            
             # Focus on Pixel Cloud Keys group as specified in the YAML
-            pixel_cloud_config = dataset_description.get('Pixel Cloud Keys', {})
+            pixel_cloud_config = dataset_description.get('pixel_cloud_keys', {})
             
             if pixel_cloud_group is None:
                 logger.error(f"Required group 'pixel_cloud' not found in {file_path}")
@@ -184,6 +198,8 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
             # Convert to dataframe
             logger.debug("Converting to DataFrame.")
             df = data_subset.to_dataframe().reset_index()
+            # unload pixel_cloud_group
+            del pixel_cloud_group
             
             # Apply filtering based on constraints
             for var_name, var_config in pixel_cloud_config.items():
@@ -192,6 +208,7 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                     if constraints:
                         df = filter_by_constraints(df, var_name, constraints)
             
+
             # Convert to GeoDataFrame if latitude and longitude are available
             if 'latitude' in df.columns and 'longitude' in df.columns:
                 # Use GeoPandas' built-in functionality for creating geometries
@@ -203,7 +220,6 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 return None
             
             # If clip_shp is provided, clip the GeoDataFrame to every geometry in the shapefile and assign the clip_id_name to the clipped geometries
-
             if clip_shp is not None:
                 logger.debug(f"Clipping GeoDataFrame to shapefile: {clip_shp}")
                 clip_gdf = gpd.read_file(clip_shp)
@@ -232,36 +248,56 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 # Rename the clip_id_name column to avoid conflicts
                 gdf.rename(columns={clip_id_name: f"{clip_id_name}_clip"}, inplace=True)
 
-                # Get the file attributes from the dataset, confirm expected types and add to entire columns
-                try: 
-                    file_attributes = dataset_description.get('File parameters', {})
-
-                    # Check if the file attributes are present in the dataset description
-                    if not file_attributes:
-                        raise Exception("Optional file attributes not found in the dataset description.")
-
-                    # Iterate over the file attributes and check their types
-                    for attr_name, attr_config in file_attributes.items():
-                        expected_type = attr_config.get('type')
-                        if attr_name in gdf.columns and not check_variable_type(gdf[attr_name].values, expected_type):
-                            logger.warning(f"File attribute {attr_name} has incorrect type. Expected {expected_type}, got {gdf[attr_name].dtype}")
-
-                    # Add the file attributes to the GeoDataFrame
-                    for attr_name, attr_value in file_attributes.items():
-                        if attr_name not in gdf.columns:
-                            gdf[attr_name] = attr_value
-                        else:
-                            logger.warning(f"Column {attr_name} already exists in the GeoDataFrame. Name space collision.")
-                            return None
-                        
-                except Exception as e:
-                    logger.warning(f"Optional file attributes not found in the dataset description.")
-
                 # Check if the resulting GeoDataFrame is empty after clipping
                 if gdf.empty:
                     logger.debug(f"GeoDataFrame is empty after clipping with {clip_shp}")
                     return None
             
+            # populate the dataframe with the file_parameters specified in the yaml file post filtering
+            required_attributes = dataset_description.get('file_parameters', [])
+            for attr in required_attributes:
+                # check if the attribute exists in the dataset
+                if attr in dataset_info:
+                    # check if the attribute complies with the expected type
+                    attr_type = required_attributes.get(attr, {}).get('type')
+                    attr_content = dataset_info[attr]
+                    attr_cast = required_attributes.get(attr, {}).get('cast', None)
+                    
+                    if attr_type:
+                        if not check_variable_type(attr_content, attr_type):
+                            logger.warning(f"Attribute {attr} has incorrect type. Expected {attr_type}, got {type(attr_content)}")
+                            continue
+                    
+                    # check if the attribute needs to be casted and attempt if so
+                    if attr_cast:
+                        _cast_type_dict = {'int': int,'float': float,'str': str,'bool': bool,'list': list,'np.ndarray': np.ndarray}
+                        # handle ndim > 0 to scalar
+                        if isinstance(attr_content, np.ndarray) and attr_content.ndim > 0:
+                            attr_content = attr_content.flatten()
+                            if len(attr_content) == 1:
+                                attr_content = attr_content[0]
+                        try:
+                            attr_content = _cast_type_dict[attr_cast](attr_content)
+                        except Exception as e:
+                            logger.warning(f"Failed to cast attribute {attr} to {attr_cast}: {str(e)}")
+                            continue
+                    
+                    # add the attribute to the GeoDataFrame depending on the type
+                    if isinstance(attr_content, (str, int, float)):
+                        gdf[attr] = attr_content
+                    elif isinstance(attr_content, list):
+                        gdf[attr] = [attr_content] * len(gdf)
+                    elif isinstance(attr_content, np.ndarray):
+                        gdf[attr] = [attr_content.tolist()] * len(gdf)
+                    elif isinstance(attr_content, np.bytes_):
+                        gdf[attr] = attr_content.decode('utf-8')
+                    else:
+                        logger.warning(f"Unsupported attribute type for {attr}: {type(attr_content)}. Expected str, int, float, list, np.ndarray, or np.bytes_.")
+                        continue
+                    logger.debug(f"Added attribute {attr} with {attr_content} to GeoDataFrame")
+                else:
+                    logger.warning(f"Attribute {attr} not found in dataset info")
+
             # Check if the resulting GeoDataFrame is empty
             if gdf.empty:
                 logger.debug(f"GeoDataFrame is empty after processing {file_path}")
@@ -307,6 +343,11 @@ def process_netcdf_files(file_paths, config, output_file=None, clip_shp=None, cl
             combined_gdf.to_pickle(output_file)
         logger.info(f"Saved combined GeoDataFrame to {output_file}")
     
+    # logger print all columns and their types
+    logger.debug("Combined GeoDataFrame columns and types:")
+    for col in combined_gdf.columns:
+        logger.debug(f"{col}: {combined_gdf[col].dtype}")
+    
     return combined_gdf
 
 def load_configuration():
@@ -315,19 +356,47 @@ def load_configuration():
     return config
 
 def initialize_logging(print_level=logging.INFO, file_level=logging.DEBUG):
-    """Initialize logging configuration."""
+    """
+    Initialize logging configuration for both console and file outputs.
+
+    Args:
+        print_level (int): Logging level for console output (e.g., logging.INFO).
+        file_level (int): Logging level for file output (e.g., logging.DEBUG).
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
     global logger
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # Create a logger instance
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)  # Set the base logging level to DEBUG
+
+    # Define a timestamp for the log file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_handler = logging.FileHandler(f'process_netcdf_{timestamp}.log')
+    log_dir = Path('logs')
+    log_dir.mkdir(exist_ok=True)
+    log_filename = log_dir / f'process_netcdf_{timestamp}.log'
+
+    # Create a file handler for logging to a file
+    file_handler = logging.FileHandler(log_filename)
     file_handler.setLevel(file_level)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    
-    # Check if the handler already exists
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+
+    # Add the file handler only if it hasn't been added already
     if not any(isinstance(handler, logging.FileHandler) and handler.baseFilename == file_handler.baseFilename for handler in logger.handlers):
         logger.addHandler(file_handler)
+
+    # Create a console handler for logging to the console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(print_level)
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+
+    # Add the console handler
+    logger.addHandler(console_handler)
+
     return logger
 
 def main():
