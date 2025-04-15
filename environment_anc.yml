@@ -3,14 +3,20 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - geopandas
-  - matplotlib
-  - numpy
-  - pandas
   - contextily
-  - netcdf4
-  - h5py
-  - xarray
+  - dask
   - earthaccess
+  - geopandas
+  - h5py
   - ipykernel
   - jupyter
+  - matplotlib
+  - netcdf4
+  - numpy
+  - pandas
+  - pyarrow
+  - xarray
+  - psycopg2-binary
+  - geoalchemy2
+  - sqlalchemy
+  - beautifulsoup4

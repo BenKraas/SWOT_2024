@@ -15,5 +15,9 @@ dependencies:
   - pandas
   - pyarrow
   - xarray
+  - psycopg2-binary
+  - geoalchemy2
+  - sqlalchemy
+  - beautifulsoup4
 
 prefix: "/home/ben/.local/share/mamba/envs/MMB_SWOT_2024"
