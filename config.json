@@ -1,0 +1,10 @@
+{
+    "data_dir": "data",
+    "sampling_points_shapefile": "res/Reservoirs.shp",
+    "pixel_cloud_dataset_folder": "data/Water mask pixel cloud 3",
+    "temporal_range": [
+        "2024-01-01T00:00:00",
+        "2024-12-31T00:00:00"
+    ],
+    "product_short_name": "SWOT_L2_HR_PIXC_2.0"
+}
