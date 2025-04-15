@@ -1,0 +1,236 @@
+# This file defines the netCDF groups and variables that will be read from each nc file and written to the GeoDataFrame.
+
+######################################################################
+# Scroll to the bottom to set up the desired dataframe structure.
+######################################################################
+
+# EXAMPLE FULL DESCRIPTION OF THE NETCDF PRODUCT
+# #####
+# Group 1
+# #####
+#   Property 1
+#   Property 2
+#   Property 3
+
+# #####
+# File parameters:
+# #####
+#   _NCProperties: 'version=2,netcdf=4.9.2,hdf5=1.14.0'
+#   Conventions: 'CF-1.7'
+#   title: 'Level 2 KaRIn High Rate Water Mask Pixel Cloud Data Product'
+#   institution: 'CNES'
+#   source: 'Level 1B KaRIn High Rate Single Look Complex Data Product'
+#   history: '2024-02-09T04:52:59Z : Creation'
+#   platform: 'SWOT'
+#   reference_document: 'JPL D-56411 - Revision A (DRAFT) - June 9, 2021'
+#   contact: 'ops@jpl.nasa.gov'
+#   cycle_number: [10]
+#   pass_number: [318]
+#   tile_number: [155]
+#   swath_side: 'L'
+#   tile_name: '318_155L'
+#   short_name: 'L2_HR_PIXC'
+#   crid: 'PIC0'
+#   pge_name: 'PGE_L2_HR_PIXC'
+#   pge_version: '5.0.4'
+#   time_granule_start: '2024-02-05T08:33:56.201280Z'
+#   time_granule_end: '2024-02-05T08:34:07.285607Z'
+#   time_coverage_start: '2024-02-05T08:33:56.748261Z'
+#   time_coverage_end: '2024-02-05T08:34:06.742002Z'
+#   geospatial_lon_min: [36.55838379]
+#   geospatial_lon_max: [37.17435959]
+#   geospatial_lat_min: [-0.59889032]
+#   geospatial_lat_max: [0.117783]
+#   inner_first_longitude: [36.55838379]
+#   inner_first_latitude: [0.03168908]
+#   inner_last_longitude: [36.67953701]
+#   inner_last_latitude: [-0.59889032]
+#   outer_first_longitude: [37.14340723]
+#   outer_first_latitude: [0.117783]
+#   outer_last_longitude: [37.17435959]
+#   outer_last_latitude: [-0.52603886]
+#   wavelength: [0.0083858]
+#   near_range: [892518.69794537]
+#   nominal_slant_range_spacing: [0.74948116]
+#   polarization: 'H'
+#   transmit_antenna: 'minus_y'
+#   processing_beamwidth: [0.05]
+#   slc_along_track_resolution: [4.80471121]
+#   slc_range_resolution: [0.74948114]
+#   slc_first_line_index_in_tvp: [334]
+#   slc_last_line_index_in_tvp: [23322]
+#   kmsf_to_dop_roll: [0.00756617]
+#   kmsf_to_dop_pitch: [0.01266509]
+#   kmsf_to_dop_yaw: [0.03843577]
+#   xref_l1b_hr_slc_file: 'SWOT_L1B_HR_SLC_010_318_155L_20240205T083356_20240205T083407_PIC0_01.nc'
+#   xref_int_lr_xover_cal_file: 'SWOT_INT_LR_XOverCal_20240204T233336_20240205T233428_PIC0_01.nc'
+#   xref_statickarincal_files: 'SWOT_StaticKaRInCalAdjustableParam_20000101T000000_20991231T235959_20230823T210000_v106.nc'
+#   xref_param_l2_hr_pixc_file: 'SWOT_Param_L2_HR_PIXC_20000101T000000_20991231T235959_20230915T090000_v306.cfg'
+#   xref_refdem_file: 'SWOT_RefDEM_Nom_318_155L_20000101T000000_21000101T000000_20220301T025755_v101.nc'
+#   xref_watermask_files: 'SWOT_WaterMaskProbability_Nom_318_155L_20000101T000000_21000101T000000_20220920T132901_v002.nc, SWOT_WaterMaskInclusion_Nom_318_155L_20000101T000000_21000101T000000_20220920T132901_v002.nc, SWOT_WaterMaskBrightLand_Nom_318_155L_20000101T000000_21000101T000000_20220920T132901_v002.nc'
+#   xref_reforbittrack_files: 'SWOT_RefOrbitTrackTileBoundary_Nom_20000101T000000_21000101T000000_20200617T193054_v101.txt'
+#   xref_meteorological_orography_files: 'SMM_ORA_AXVCNE20240205_174030_20240205_060000_20240205_060000, SMM_ORA_AXVCNE20240205_174030_20240205_120000_20240205_120000'
+#   xref_meteorological_specific_humidity_files: 'SMM_Q3A_AXVCNE20240205_174030_20240205_060000_20240205_060000, SMM_Q3A_AXVCNE20240205_174030_20240205_120000_20240205_120000'
+#   xref_meteorological_temperature_profile_files: 'SMM_T3A_AXVCNE20240205_174030_20240205_060000_20240205_060000, SMM_T3A_AXVCNE20240205_174030_20240205_120000_20240205_120000'
+#   xref_meteorological_specific_cloud_liquid_water_files: 'SMM_L3A_AXVCNE20240205_174030_20240205_060000_20240205_060000, SMM_L3A_AXVCNE20240205_174030_20240205_120000_20240205_120000'
+#   xref_meteorological_surface_pressure_files: 'SMM_PSA_AXVCNE20240205_174030_20240205_060000_20240205_060000, SMM_PSA_AXVCNE20240205_174030_20240205_120000_20240205_120000'
+#   xref_gim_files: 'JPLQ0360.24I'
+#   xref_pole_location_file: 'SMM_PO1_AXXCNE20240209_020000_19900101_000000_20240807_000000'
+#   xref_geco_database_version: 'v102'
+#   ellipsoid_semi_major_axis: [6378137.]
+#   ellipsoid_flattening: [0.00335281]
+#   references: '1.2'
+#   product_version: '01'
+
+# #####
+# File structure:
+# #####
+#   pixel_cloud
+#   tvp
+#   noise
+
+# #####
+# Pixel cloud attributes:
+# #####
+#   description: 'cloud of geolocated interferogram pixels'
+#   interferogram_size_azimuth: [3283]
+#   interferogram_size_range: [5528]
+#   looks_to_efflooks: [1.5542659]
+#   num_azimuth_looks: [7.]
+#   azimuth_offset: [4]
+
+# #####
+# Pixel cloud keys:
+# #####
+#   points
+#   num_pixc_lines
+#   azimuth_index: 'Rare interferogram azimuth index (indexed from 0).'
+#   range_index: 'Rare interferogram range index (indexed from 0).'
+#   complex_depth
+#   interferogram: 'Complex unflattened rare interferogram.'
+#   power_plus_y: 'Power for the plus_y channel (arbitrary units that give sigma0 when noise subtracted and normalized by the X factor).'
+#   power_minus_y: 'Power for the minus_y channel (arbitrary units that give sigma0 when noise subtracted and normalized by the X factor).'
+#   coherent_power: 'Power computed by combining the plus_y and minus_y channels coherently by co-aligning the phases (arbitrary units that give sigma0 when noise subtracted and normalized by the X factor).'
+#   x_factor_plus_y: 'X factor for the plus_y channel power in linear units (arbitrary units to normalize noise-subtracted power to sigma0).'
+#   x_factor_minus_y: 'X factor for the minus_y channel power in linear units (arbitrary units to normalize noise-subtracted power to sigma0).'
+#   water_frac: 'Noisy estimate of the fraction of the pixel that is water.'
+#   water_frac_uncert: 'Uncertainty estimate of the water fraction estimate (width of noisy water frac estimate distribution).'
+#   classification: 'Flags indicating water detection results.'
+#   false_detection_rate: 'Probability of falsely detecting water when there is none.'
+#   missed_detection_rate: 'Probability of falsely detecting no water when there is water.'
+#   prior_water_prob: 'Prior probability of water occurring.'
+#   bright_land_flag: 'Flag indicating areas that are not typically water but are expected to be bright (e.g., urban areas, ice).  Flag value 2 indicates cases where prior data indicate land, but where prior_water_prob indicates possible water.'
+#   layover_impact: 'Estimate of the height error caused by layover, which may not be reliable on a pixel by pixel basis, but may be useful to augment aggregated height uncertainties.'
+#   eff_num_rare_looks: 'Effective number of independent looks taken to form the rare interferogram.'
+#   latitude: 'Geodetic latitude [-80,80] (degrees north of equator) of the pixel.'
+#   longitude: 'Longitude [-180,180) (east of the Greenwich meridian) of the pixel.'
+#   height: 'Height of the pixel above the reference ellipsoid.'
+#   cross_track: 'Approximate cross-track location of the pixel.'
+#   pixel_area: 'Pixel area.'
+#   inc: 'Incidence angle.'
+#   phase_noise_std: 'Estimate of the phase noise standard deviation.'
+#   dlatitude_dphase: 'Sensitivity of the latitude estimate to the interferogram phase.'
+#   dlongitude_dphase: 'Sensitivity of the longitude estimate to the interferogram phase.'
+#   dheight_dphase: 'Sensitivity of the height estimate to the interferogram phase.'
+#   dheight_droll: 'Sensitivity of the height estimate to the spacecraft roll.'
+#   dheight_dbaseline: 'Sensitivity of the height estimate to the interferometric baseline.'
+#   dheight_drange: 'Sensitivity of the height estimate to the range (delay).'
+#   darea_dheight: 'Sensitivity of the pixel area to the reference height.'
+#   illumination_time: 'Time of measurement in seconds in the UTC time scale since 1 Jan 2000 00:00:00 UTC. [tai_utc_difference] is the difference between TAI and UTC reference time (seconds) for the first measurement of the data set. If a leap second occurs within the data set, the attribute leap_second is set to the UTC time at which the leap second occurs.'
+#   illumination_time_tai: 'Time of measurement in seconds in the TAI time scale since 1 Jan 2000 00:00:00 TAI. This time scale contains no leap seconds. The difference (in seconds) with time in UTC is given by the attribute [illumination_time:tai_utc_difference].'
+#   eff_num_medium_looks: 'Effective number of independent looks taken in forming the medium interferogram (after adaptive averaging).'
+#   sig0: 'Normalized radar cross section (sigma0) in real, linear units (not decibels). The value may be negative due to noise subtraction.'
+#   sig0_uncert: '1-sigma uncertainty in the sig0 measurement.  The value is given as an additive (not multiplicative) linear term (not a term in decibels).'
+#   phase_unwrapping_region: 'Phase unwrapping region index.'
+#   ambiguity_cost1: 'Phase ambiguity minimum cost.'
+#   ambiguity_cost2: 'Phase ambiguity 2nd minimum cost.'
+#   instrument_range_cor: 'Term that incorporates all calibration corrections applied to range before geolocation.'
+#   instrument_phase_cor: 'Term that incorporates all calibration corrections applied to phase before geolocation.'
+#   instrument_baseline_cor: 'Term that incorporates all calibration corrections applied to baseline before geolocation.'
+#   sig0_cor_atmos_model: 'Atmospheric correction to sigma0 from weather model data as a linear power multiplier (not decibels). sig0_cor_atmos_model is already applied in computing sig0 and x_factor_plus_y and x_factor_minus_y.'
+#   height_cor_xover: 'Height correction from KaRIn crossover calibration. The correction is applied before geolocation but reported as an equivalent height correction.'
+#   model_dry_tropo_cor: 'Equivalent vertical correction due to dry troposphere delay. The reported pixel height, latitude and longitude are computed after adding negative media corrections to uncorrected range along slant-range paths, accounting for the differential delay between the two KaRIn antennas. The equivalent vertical correction is computed by applying obliquity factors to the slant-path correction. Adding the reported correction to the reported pixel height results in the uncorrected pixel height.'
+#   model_wet_tropo_cor: 'Equivalent vertical correction due to wet troposphere delay. The reported pixel height, latitude and longitude are computed after adding negative media corrections to uncorrected range along slant-range paths, accounting for the differential delay between the two KaRIn antennas. The equivalent vertical correction is computed by applying obliquity factors to the slant-path correction. Adding the reported correction to the reported pixel height results in the uncorrected pixel height.'
+#   iono_cor_gim_ka: 'Equivalent vertical correction due to ionosphere delay. The reported pixel height, latitude and longitude are computed after adding negative media corrections to uncorrected range along slant-range paths, accounting for the differential delay between the two KaRIn antennas. The equivalent vertical correction is computed by applying obliquity factors to the slant-path correction. Adding the reported correction to the reported pixel height results in the uncorrected pixel height.'
+#   geoid: 'Geoid height above the reference ellipsoid with a correction to refer the value to the mean tide system, i.e. includes the permanent tide (zero frequency).  This value is reported for reference but is not applied to the reported height.'
+#   solid_earth_tide: 'Solid-Earth (body) tide height. The zero-frequency permanent tide component is not included.  This value is reported for reference but is not applied to the reported height.'
+#   load_tide_fes: b"Geocentric load tide height. The effect of the ocean tide loading of the Earth's crust. This value is reported for reference but is not applied to the reported height."
+#   load_tide_got: b"Geocentric load tide height. The effect of the ocean tide loading of the Earth's crust. This value is reported for reference but is not applied to the reported height."
+#   pole_tide: b"Geocentric pole tide height. The total of the contribution from the solid-Earth (body) pole tide height and the load pole tide height (i.e., the effect of the ocean pole tide loading of the Earth's crust).  This value is reported for reference but is not applied to the reported height."
+#   ancillary_surface_classification_flag: '7-state surface type classification computed from a mask built with MODIS and GlobCover data.'
+#   interferogram_qual: 'Quality flag for the interferogram quantities in the pixel cloud data'
+#   classification_qual: 'Quality flag for the classification quantities in the pixel cloud data'
+#   geolocation_qual: 'Quality flag for the geolocation quantities in the pixel cloud data'
+#   sig0_qual: 'Quality flag for sig0'
+#   pixc_line_qual: 'Quality flag for pixel cloud data per rare-posted interferogram line (similar to slc_qual in the L1B_HR_SLC product)'
+#   pixc_line_to_tvp: 'Pixel cloud rare radar grid line index to tvp index mapping'
+#   data_window_first_valid: 'Pixel cloud data window starting index of first valid pixel in the range direction'
+#   data_window_last_valid: 'Pixel cloud data window ending index of last valid pixel in the range direction'
+#   data_window_first_cross_track: 'Pixel cloud data window starting cross-track distance in meters of first valid pixel in the range direction'
+#   data_window_last_cross_track: 'Pixel cloud data window ending cross-track distance in meters of last valid pixel in the range direction'
+
+
+
+# Explanation of possible configuration options:
+#   - type:         [Optional] The data type of the variable.
+#   - description:  [Optional] A description of the variable.
+#   - include:      [Optional] A list of values to include in the variable.
+
+# START OF DEFINITION
+
+"File\ parameters":
+  swath_side:
+    type: str
+    description: 'Swath side (L or R).'
+
+
+  
+"Pixel\ Cloud\ Keys":
+  azimuth_index: 
+    type: float64
+    description: 'Rare interferogram azimuth index (indexed from 0).'
+  range_index: 
+    type: float64
+    description: 'Rare interferogram range index (indexed from 0).'
+  latitude: 
+    type: float
+    description: 'Geodetic latitude [-80,80] (degrees north of equator) of the pixel.'
+  longitude: 
+    type: float
+    description: 'Longitude [-180,180) (east of the Greenwich meridian) of the pixel.'
+  height: 
+    type: float
+    description: 'Height of the pixel above the reference ellipsoid.'
+  water_frac: 
+    type: float
+    description: 'Noisy estimate of the fraction of the pixel that is water.'
+  water_frac_uncert: 
+    type: float
+    description: 'Uncertainty estimate of the water fraction estimate (width of noisy water frac estimate distribution).'
+  classification: 
+    type: float32
+    description: 'Flags indicating water detection results.'
+    include:
+      - 3 # 
+      - 4 # 
+  cross_track: 
+    type: float
+    description: 'Approximate cross-track location of the pixel.'
+  pixel_area: 
+    type: float
+    description: 'Pixel area.'
+  illumination_time: 
+    type: datetime64[ns]
+    description: 'Time of measurement in seconds in the UTC time scale since 1 Jan 2000 00:00:00 UTC. [tai_utc_difference] is the difference between TAI and UTC reference time (seconds) for the first measurement of the data set. If a leap second occurs within the data set, the attribute leap_second is set to the UTC time at which the leap second occurs.'
+  illumination_time_tai: 
+    type: datetime64[ns]
+    description: 'Time of measurement in seconds in the TAI time scale since 1 Jan 2000 00:00:00 TAI. This time scale contains no leap seconds. The difference (in seconds) with time in UTC is given by the attribute [illumination_time:tai_utc_difference].'
+  interferogram_qual: 
+    type: float64
+    description: 'Quality flag for the interferogram quantities in the pixel cloud data'
+  classification_qual:
+    type: float64
+    description: 'Quality flag for the classification quantities in the pixel cloud data'
+  geolocation_qual:
+    type: float64
+    description: 'Quality flag for the geolocation quantities in the pixel cloud data'
