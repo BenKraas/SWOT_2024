@@ -83,23 +83,6 @@
 #   product_version: '01'
 
 # #####
-# File structure:
-# #####
-#   pixel_cloud
-#   tvp
-#   noise
-
-# #####
-# Pixel cloud attributes:
-# #####
-#   description: 'cloud of geolocated interferogram pixels'
-#   interferogram_size_azimuth: [3283]
-#   interferogram_size_range: [5528]
-#   looks_to_efflooks: [1.5542659]
-#   num_azimuth_looks: [7.]
-#   azimuth_offset: [4]
-
-# #####
 # Pixel cloud keys:
 # #####
 #   points
@@ -169,23 +152,74 @@
 #   data_window_first_cross_track: 'Pixel cloud data window starting cross-track distance in meters of first valid pixel in the range direction'
 #   data_window_last_cross_track: 'Pixel cloud data window ending cross-track distance in meters of last valid pixel in the range direction'
 
+### CURRENTLY NOT SUPPORTED:
+# # #####
+# # File structure:
+# # #####
+# #   pixel_cloud
+# #   tvp
+# #   noise
+
+# # #####
+# # Pixel cloud attributes:
+# # #####
+# #   description: 'cloud of geolocated interferogram pixels'
+# #   interferogram_size_azimuth: [3283]
+# #   interferogram_size_range: [5528]
+# #   looks_to_efflooks: [1.5542659]
+# #   num_azimuth_looks: [7.]
+# #   azimuth_offset: [4]
 
 
-# Explanation of possible configuration options:
-#   - type:         [Optional] The data type of the variable.
-#   - description:  [Optional] A description of the variable.
-#   - include:      [Optional] A list of values to include in the variable.
 
-# START OF DEFINITION
 
-"File\ parameters":
+
+
+######################################################################
+# YAML Configuration for netCDF Groups and Variables
+######################################################################
+# This file defines the netCDF groups and variables to be read from 
+# each netCDF file and written to a GeoDataFrame. It is structured 
+# as a YAML file for human-readable data serialization.
+#
+# Sections:
+#   1. "file_parameters": Metadata about the netCDF file.
+#   2. "pixel_cloud_keys": Data variables such as azimuth index, 
+#      range index, latitude, longitude, and height.
+#
+# Designed for use with the "netCDF4" Python library.
+######################################################################
+
+# Explanation of configuration options:
+#   - type:         [Optional] Data type of the variable.
+#   - description:  [Optional] Description of the variable.
+#   - include:      [Optional] List of values to include for the variable.
+#   - cast:         [Optional] Attempt to cast the variable to a different type. Verbosely skipped if failed.
+
+
+######################################################################
+# File Parameters Section
+######################################################################
+"file_parameters":
   swath_side:
-    type: str
+    type: string
     description: 'Swath side (L or R).'
+  tile_name:
+    type: string
+    description: 'Tile name (e.g., 318_155L).'
+  wavelength:
+    type: np.ndarray
+    cast: float
+    description: 'Unsure of the units, but it is potentially in meters.'
+  polarization:
+    type: string
+    description: 'Polarization (H or V).'
 
 
-  
-"Pixel\ Cloud\ Keys":
+######################################################################
+# Pixel Cloud Keys Section
+######################################################################
+"pixel_cloud_keys":
   azimuth_index: 
     type: float64
     description: 'Rare interferogram azimuth index (indexed from 0).'
@@ -211,8 +245,8 @@
     type: float32
     description: 'Flags indicating water detection results.'
     include:
-      - 3 # 
-      - 4 # 
+      - 3
+      - 4
   cross_track: 
     type: float
     description: 'Approximate cross-track location of the pixel.'
