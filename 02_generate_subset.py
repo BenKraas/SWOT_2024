@@ -177,6 +177,9 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
             
             # Extract the subset of data
             data_subset = pixel_cloud_group[variables_to_extract]
+
+            # unload pixel_cloud_group
+            del pixel_cloud_group
            
             # Ensure the dataset only contains the specified variables
             data_subset = data_subset[variables_to_extract]
@@ -195,11 +198,20 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 logger.info(f"Dropping invalid columns: {invalid_columns}")
                 data_subset = data_subset.drop_vars(invalid_columns)
             
+            new_dataset = pd.DataFrame()
+            for var_name in data_subset.variables:
+                try:
+                    # Convert to DataFrame
+                    var_data = data_subset[var_name].values
+                    print(f"Var name: {var_name} shape: {var_data.shape}")
+                    new_dataset[var_name] = var_data
+                except Exception as e:
+                    logger.error(f"Error converting variable {var_name} to DataFrame: {str(e)}. It will be skipped.")
+                    continue
+
             # Convert to dataframe
             logger.debug("Converting to DataFrame.")
-            df = data_subset.to_dataframe().reset_index()
-            # unload pixel_cloud_group
-            del pixel_cloud_group
+            df = new_dataset.reset_index(drop=True)
             
             # Apply filtering based on constraints
             for var_name, var_config in pixel_cloud_config.items():
