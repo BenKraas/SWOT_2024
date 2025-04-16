@@ -1,4 +1,15 @@
+# Standard library imports
 import os
+import re
+import gc
+import json
+import logging
+import multiprocessing
+from pathlib import Path
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+
+# Third-party library imports
 import yaml
 import numpy as np
 import pandas as pd
@@ -6,14 +17,8 @@ import geopandas as gpd
 import netCDF4 as nc
 import h5py
 import xarray as xr
-import re
-
 from tqdm import tqdm
 from shapely.geometry import Point
-import logging
-import json
-from pathlib import Path
-from datetime import datetime
 
 
 def load_dataset_description(yaml_file):
@@ -46,9 +51,9 @@ def check_variable_type(var_data, expected_type):
         logger.warning(f"Unknown type check for {expected_type}. Check supported types in check_variable_type() function.")
         return True
 
-def cast_to_variable_type(var_data, expected_type):
+def cast_xarr_to_variable_type(var_data, expected_type):
     """
-    Cast variable data to the expected type.
+    Cast xarray DataArray or Dataset to the expected type.
     Supported types: 'int', 'float', 'string', 'float64', 'float32', 'datetime64[ns]'.
     """
     try:
@@ -64,7 +69,7 @@ def cast_to_variable_type(var_data, expected_type):
             case 'float32':
                 return var_data.astype(np.float32)
             case 'datetime64[ns]':
-                return pd.to_datetime(var_data)
+                return var_data.astype('datetime64[ns]')
             case _:
                 logger.warning(f"Unknown type cast for {expected_type}. Check supported types in cast_to_variable_type() function.")
                 return var_data
@@ -217,26 +222,27 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
             logger.info(f"Dropping invalid columns: {invalid_columns}")
             data_subset = data_subset.drop_vars(invalid_columns)
         
-        # Cast variables to their expected types if cast is defined
-        for var_name, var_config in pixel_cloud_config.items():
-            # if cast is a property of the variable, cast it
-            if 'cast' in var_config:
-                cast_type = var_config['cast']
-                if var_name in data_subset.variables:
-                    try:
-                        data_subset[var_name] = cast_to_variable_type(data_subset[var_name], cast_type)
-                    except Exception as e:
-                        logger.warning(f"Failed to cast variable {var_name} to {cast_type}: {str(e)}")
-                        continue
-                else:
-                    logger.warning(f"Variable {var_name} not found in data_subset.")
+        # # Cast variables to their expected types if cast is defined
+        # for var_name, var_config in pixel_cloud_config.items():
+        #     # if cast is a property of the variable, cast it
+        #     if 'cast' in var_config:
+        #         cast_type = var_config['cast']
+        #         if var_name in data_subset.variables:
+        #             try:
+        #                 data_subset[var_name] = cast_xarr_to_variable_type(data_subset[var_name], cast_type)
+        #             except Exception as e:
+        #                 logger.warning(f"Failed to cast variable {var_name} to {cast_type}: {str(e)}")
+        #                 continue
+        #         else:
+        #             logger.warning(f"Variable {var_name} not found in data_subset.")
 
         new_dataset = pd.DataFrame()
+        logger.debug("Converting variables to DataFrame...")
         for var_name in data_subset.variables:
             try:
                 # Convert to DataFrame
                 var_data = data_subset[var_name].values
-                print(f"Var name: {var_name} shape: {var_data.shape}")
+                logger.debug(f"│  Var name: {var_name} shape: {var_data.shape}")
                 new_dataset[var_name] = var_data
             except Exception as e:
                 logger.error(f"Error converting variable {var_name} to DataFrame: {str(e)}. It will be skipped.")
@@ -316,7 +322,7 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 # check if the attribute needs to be casted and attempt if so
                 if attr_cast:
                     try:
-                        attr_content = cast_to_variable_type(attr_content, attr_cast)
+                        attr_content = cast_xarr_to_variable_type(attr_content, attr_cast)
                     except Exception as e:
                         logger.warning(f"Failed to cast attribute {attr} to {attr_cast}: {str(e)}")
                         continue
@@ -336,7 +342,7 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 logger.debug(f"Added attribute {attr} with {attr_content} to GeoDataFrame")
             else:
                 logger.warning(f"Attribute {attr} not found in dataset info")
-
+        
         # Check if the resulting GeoDataFrame is empty
         if gdf.empty:
             logger.debug(f"GeoDataFrame is empty after processing {file_path}")
@@ -350,18 +356,50 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
         logger.error(f"Error processing {file_path}: {str(e)}")
         return None
 
-def process_netcdf_files(file_paths, config, output_file=None, clip_shp=None, clip_id_name=None):
-    """Process multiple netCDF files and combine the results."""
+def process_netcdf_files(file_paths, config, 
+                         output_file=None, 
+                         clip_shp=None, 
+                         clip_id_name=None, 
+                         force_overwrite=True):
+    """
+    Process multiple netCDF files and combine the results.
+    
+    Args:
+        file_paths (list): List of file paths to process.
+        config (dict): Configuration dictionary.
+        output_file (str): Path to save the combined output.
+        clip_shp (str): Path to shapefile for clipping.
+        clip_id_name (str): Column name in the shapefile for clipping.
+        force_overwrite (bool): Determines if cached files should be overwritten - Default True, only change if run was interrupted.
+        
+    Returns:
+        combined_gdf (GeoDataFrame): Combined GeoDataFrame from all files.
+    """
+    
+    temp_data_fpath = Path('./data/temp/gdfparts')
+    temp_data_fpath.mkdir(exist_ok=True, parents=True)
+        
+    # Process each file and cache intermediate results to save RAM
+    core_fileload_sync(file_paths, config, clip_shp, clip_id_name, force_overwrite, temp_data_fpath)
+    
+    # Build geodataframe from all intermediate files
     all_gdfs = []
-    
-    for file_path in tqdm(file_paths, desc="Processing netCDF files"):
-        gdf = process_netcdf_file_xr(file_path, config, clip_shp, clip_id_name)
-        if gdf is not None:
+    for intermediate_file in temp_data_fpath.glob('*.pkl'):
+        try:
+            gdf = pd.read_pickle(intermediate_file)
             all_gdfs.append(gdf)
-        else:
-            logger.debug(f"Skipping empty or invalid GeoDataFrame from {file_path}")
-            continue
-    
+            logger.debug(f"Loaded intermediate GeoDataFrame from {intermediate_file}")
+        except Exception as e:
+            logger.error(f"Failed to load intermediate GeoDataFrame from {intermediate_file}: {str(e)}")
+
+    # Delete intermediate files
+    for intermediate_file in temp_data_fpath.glob('*.pkl'):
+        try:
+            intermediate_file.unlink()
+            logger.debug(f"Deleted intermediate file: {intermediate_file}")
+        except Exception as e:
+            logger.error(f"Failed to delete intermediate file {intermediate_file}: {str(e)}")
+
     if not all_gdfs:
         logger.warning("No valid data extracted from any file")
         return None
@@ -385,9 +423,94 @@ def process_netcdf_files(file_paths, config, output_file=None, clip_shp=None, cl
     # logger print all columns and their types
     logger.debug("Combined GeoDataFrame columns and types:")
     for col in combined_gdf.columns:
-        logger.debug(f"{col}: {combined_gdf[col].dtype}")
+        logger.debug(f"│  {col}: {combined_gdf[col].dtype}")
     
     return combined_gdf
+
+def core_fileload_sync(file_paths, config, clip_shp, clip_id_name, force_overwrite, temp_data_fpath) -> None:
+    """Process netCDF files one by one and save intermediate results."""
+    for file_path in tqdm(file_paths, desc="Processing netCDF files", unit="file"):
+        # Check if the file pickle already exists
+        intermediate_file = temp_data_fpath / f"{os.path.basename(file_path)}.pkl"
+
+        if intermediate_file.exists() and force_overwrite is False:
+            logger.info(f"Intermediate file already exists: {intermediate_file}. Skipping processing. Beware that changed parameters may not be reflected")
+            continue
+
+        # Process the file and save the result
+        process_and_save_file(file_path, config, clip_shp, clip_id_name, intermediate_file)
+        logger.debug(f"Processed {file_path} and saved to {intermediate_file}")
+
+        # Clean up garbage
+        gc.collect()
+        logger.debug("Garbage collector ran.")
+
+    
+    return None
+
+def core_fileload_async(file_paths, config, clip_shp, clip_id_name, force_overwrite, temp_data_fpath):
+    logger.info("Starting parallel processing of netCDF files.")
+
+    # Get the number of available CPU cores
+    num_cores_all = multiprocessing.cpu_count()
+    num_cores = round(num_cores_all * 0.8)  # Use 80% of available cores
+    logger.info(f"Number of available CPU cores: {num_cores_all}; using max. {num_cores} cores for processing (~80%).")
+
+    # Create a ThreadPoolExecutor for parallel processing
+    with ThreadPoolExecutor(max_workers=num_cores) as executor:
+        futures = []
+        for file_path in file_paths:
+            logger.debug(f"Submitting file for processing: {file_path}")
+            # Check if the file pickle already exists
+            intermediate_file = temp_data_fpath / f"{os.path.basename(file_path)}.pkl"
+
+            if intermediate_file.exists() and not force_overwrite:
+                logger.info(f"Intermediate file already exists: {intermediate_file}. Skipping processing. Beware that changed parameters may not be reflected.")
+                continue
+
+            # Submit the task to the executor
+            futures.append(
+                executor.submit(process_and_save_file, file_path, config, clip_shp, clip_id_name, intermediate_file)
+            )
+
+        # Wait for all tasks to complete
+        logger.info("All tasks have been submitted for processing.")
+        for future in tqdm(futures, desc="Processing files"):
+            try:
+                future.result()  # Raise any exceptions that occurred during processing
+            except Exception as e:
+                logger.error(f"Error in processing task: {str(e)}, failed for file: {file_path}")
+            finally:
+                # Clean up garbage
+                gc.collect()
+                logger.debug("Garbage collector ran.")
+    
+    logger.info("All tasks have been completed.")
+    return None
+
+
+def process_and_save_file(file_path, config, clip_shp, clip_id_name, intermediate_file) -> None:
+    """
+    Process a single netCDF file and save the result as a pickle file.
+
+    Args:
+        file_path (str): Path to the netCDF file.
+        config (dict): Configuration dictionary.
+        clip_shp (str): Path to shapefile for clipping.
+        clip_id_name (str): Column name in the shapefile for clipping.
+        intermediate_file (Path): Path to save the intermediate pickle file.
+    """
+    try:
+        gdf = process_netcdf_file_xr(file_path, config, clip_shp, clip_id_name)
+        if gdf is not None:
+            gdf.to_pickle(intermediate_file)
+            logger.debug(f"Saved intermediate GeoDataFrame to {intermediate_file}")
+        else:
+            logger.debug(f"Skipping empty or invalid GeoDataFrame from {file_path}")
+    except Exception as e:
+        logger.error(f"Error processing {file_path}: {str(e)}")
+    return None
+
 
 def load_configuration():
     with open('config.json', 'r') as f:
@@ -458,13 +581,13 @@ def main():
     
     # Make a list of all netCDF files
     netcdf_files = list(Path(config['pixel_cloud_dataset_folder']).glob('*.nc'))
-    netcdf_files = netcdf_files[:2] # Limit to first 2 files for testing
+    # netcdf_files = netcdf_files[:26] # Limit to first 26 files for testing
 
     # Setup output file name with timestamp
     output_file = output_dir / f"combined_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.geojson"
 
     # Process files
-    result = process_netcdf_files(netcdf_files, column_definition, output_file, config["clip_shp_path"], config["clip_id_name"])
+    result = process_netcdf_files(netcdf_files, column_definition, output_file, config["clip_shp_path"], config["clip_id_name"], force_overwrite=False)
     
     if result is not None:
         logger.info(f"Successfully processed {len(netcdf_files)} files. Result contains {len(result)} rows.")

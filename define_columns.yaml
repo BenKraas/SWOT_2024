@@ -195,7 +195,7 @@
 #   - type:         [Optional] Data type of the variable.
 #   - description:  [Optional] Description of the variable.
 #   - include:      [Optional] List of values to include for the variable.
-#   - cast:         [Optional] Attempt to cast the variable to a different type. Verbosely skipped if failed.
+#   - cast:         [BROKEN, Optional] Attempt to cast the variable to a different type. Verbosely skipped if failed. Does not work.
 
 
 ######################################################################
@@ -203,7 +203,7 @@
 ######################################################################
 "file_parameters":
   swath_side:
-    type: string
+    cast: string
     description: 'Swath side (L or R).'
   tile_name:
     type: string
