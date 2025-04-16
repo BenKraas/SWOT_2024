@@ -188,6 +188,7 @@
 #      range index, latitude, longitude, and height.
 #
 # Designed for use with the "netCDF4" Python library.
+# Some of the outlined variables may not be valid and may not be includable.
 ######################################################################
 
 # Explanation of configuration options:
@@ -198,7 +199,7 @@
 
 
 ######################################################################
-# File Parameters Section
+# File Parameters Section - try to keep this section small as the data from it is very redundant.
 ######################################################################
 "file_parameters":
   swath_side:
