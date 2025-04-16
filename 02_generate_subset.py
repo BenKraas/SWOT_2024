@@ -51,22 +51,26 @@ def cast_to_variable_type(var_data, expected_type):
     Cast variable data to the expected type.
     Supported types: 'int', 'float', 'string', 'float64', 'float32', 'datetime64[ns]'.
     """
-    match expected_type:
-        case 'int':
-            return var_data.astype(int)
-        case 'float':
-            return var_data.astype(float)
-        case 'string' | 'str':
-            return var_data.astype(str)
-        case 'float64':
-            return var_data.astype(np.float64)
-        case 'float32':
-            return var_data.astype(np.float32)
-        case 'datetime64[ns]':
-            return pd.to_datetime(var_data)
-        case _:
-            logger.warning(f"Unknown type cast for {expected_type}. Check supported types in cast_to_variable_type() function.")
-            return var_data
+    try:
+        match expected_type:
+            case 'int':
+                return var_data.astype(int)
+            case 'float':
+                return var_data.astype(float)
+            case 'string' | 'str':
+                return var_data.astype(str)
+            case 'float64':
+                return var_data.astype(np.float64)
+            case 'float32':
+                return var_data.astype(np.float32)
+            case 'datetime64[ns]':
+                return pd.to_datetime(var_data)
+            case _:
+                logger.warning(f"Unknown type cast for {expected_type}. Check supported types in cast_to_variable_type() function.")
+                return var_data
+    except Exception as e:
+        logger.error(f"Failed to cast variable to {expected_type}: {str(e)}")
+        return var_data
     
 def filter_by_constraints(data, var_name, constraints):
     """Apply constraints to filter the data."""
@@ -175,7 +179,7 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
         pixel_cloud_config = dataset_description.get('pixel_cloud_keys', {})
         
         if pixel_cloud_group is None:
-            logger.error(f"Required group 'pixel_cloud' not found in {file_path}")
+            logger.error(f"Required group 'pixel_cloud' not found in definition: {file_path}")
             return None
         
         # Create a subset with only the variables we need
@@ -196,11 +200,7 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
         
         # Extract the subset of data
         data_subset = pixel_cloud_group[variables_to_extract]
-
-        # unload pixel_cloud_group
         del pixel_cloud_group
-        
-        # Ensure the dataset only contains the specified variables
         data_subset = data_subset[variables_to_extract]
 
         # Validate variable types
@@ -217,6 +217,20 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
             logger.info(f"Dropping invalid columns: {invalid_columns}")
             data_subset = data_subset.drop_vars(invalid_columns)
         
+        # Cast variables to their expected types if cast is defined
+        for var_name, var_config in pixel_cloud_config.items():
+            # if cast is a property of the variable, cast it
+            if 'cast' in var_config:
+                cast_type = var_config['cast']
+                if var_name in data_subset.variables:
+                    try:
+                        data_subset[var_name] = cast_to_variable_type(data_subset[var_name], cast_type)
+                    except Exception as e:
+                        logger.warning(f"Failed to cast variable {var_name} to {cast_type}: {str(e)}")
+                        continue
+                else:
+                    logger.warning(f"Variable {var_name} not found in data_subset.")
+
         new_dataset = pd.DataFrame()
         for var_name in data_subset.variables:
             try:
@@ -301,14 +315,8 @@ def process_netcdf_file_xr(file_path, dataset_description, clip_shp=None, clip_i
                 
                 # check if the attribute needs to be casted and attempt if so
                 if attr_cast:
-                    _cast_type_dict = {'int': int,'float': float,'str': str,'bool': bool,'list': list,'np.ndarray': np.ndarray}
-                    # handle ndim > 0 to scalar
-                    if isinstance(attr_content, np.ndarray) and attr_content.ndim > 0:
-                        attr_content = attr_content.flatten()
-                        if len(attr_content) == 1:
-                            attr_content = attr_content[0]
                     try:
-                        attr_content = _cast_type_dict[attr_cast](attr_content)
+                        attr_content = cast_to_variable_type(attr_content, attr_cast)
                     except Exception as e:
                         logger.warning(f"Failed to cast attribute {attr} to {attr_cast}: {str(e)}")
                         continue

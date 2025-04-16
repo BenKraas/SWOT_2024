@@ -243,6 +243,7 @@
     description: 'Uncertainty estimate of the water fraction estimate (width of noisy water frac estimate distribution).'
   classification: 
     type: float32
+    cast: int
     description: 'Flags indicating water detection results.'
     include:
       - 3
