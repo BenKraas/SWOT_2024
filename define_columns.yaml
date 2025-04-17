@@ -99,6 +99,13 @@
 #   water_frac: 'Noisy estimate of the fraction of the pixel that is water.'
 #   water_frac_uncert: 'Uncertainty estimate of the water fraction estimate (width of noisy water frac estimate distribution).'
 #   classification: 'Flags indicating water detection results.'
+#     1: "land",
+#     2: "land_near_water ",
+#     3: "water_near_land ",
+#     4: "open_water ",
+#     5: "dark_water  ",
+#     6: "low_coh_water_near_land  ",
+#     7: "open_low_coh_water "
 #   false_detection_rate: 'Probability of falsely detecting water when there is none.'
 #   missed_detection_rate: 'Probability of falsely detecting no water when there is water.'
 #   prior_water_prob: 'Prior probability of water occurring.'
@@ -247,8 +254,7 @@
     cast: int
     description: 'Flags indicating water detection results.'
     include:
-      - 3
-      - 4
+      - 4 # open_water
   cross_track: 
     type: float
     description: 'Approximate cross-track location of the pixel.'
@@ -264,12 +270,21 @@
   interferogram_qual: 
     type: float64
     description: 'Quality flag for the interferogram quantities in the pixel cloud data'
+    include:
+      - 0
   classification_qual:
     type: float64
     description: 'Quality flag for the classification quantities in the pixel cloud data'
+  sig0_qual:
+    type: float64
+    description: 'Quality flag for sig0'
+    include:
+      - 0
   geolocation_qual:
     type: float64
     description: 'Quality flag for the geolocation quantities in the pixel cloud data'
+    include:
+      - 0
   # pixc_line_to_tvp:
   #   type: float32
   #   description: 'Pixel cloud rare radar grid line index to tvp index mapping'
