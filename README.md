@@ -34,6 +34,10 @@ The goal of this project is to create a custom workflow for SWOT analysis.
    
    - This script generates boxplots for the focus regions
 
+# Disclaimer
+These notebooks were designed as a coupled system, thus running them individually will not work.
+The order from 01 to 03 must be followed.
+
 # Interesting events:
-Damm breakage (date pending)
-Volumenberechnung?
+Dam breakage (date pending)
+Volume calculation?
